@@ -1,38 +1,44 @@
-from collections import namedtuple
-import altair as alt
-import math
-import pandas as pd
 import streamlit as st
+import plotly.express as px
+import pandas as pd
 
-"""
-# Welcome to Streamlit!
+# st.cache caches the function commands so that it is not reloaded every time the script is updated.
 
-Edit `/streamlit_app.py` to customize this app to your heart's desire :heart:
+@st.cache
+def load_data():
+	df = pd.read_csv("all_stocks_5yr.csv", index_col = "date")	
+	numeric_df = df.select_dtypes(['float', 'int'])
+	numeric_cols = numeric_df.columns
 
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
+	text_df = df.select_dtypes(['object'])
+	text_cols = text_df.columns
 
-In the meantime, below is an example of what you can do with just a few lines of code:
-"""
+	stock_column = df['Name']
+	unique_stocks = stock_column.unique()
 
+	return df, numeric_cols, text_cols, unique_stocks
 
-with st.echo(code_location='below'):
-    total_points = st.slider("Number of points in spiral", 1, 5000, 2000)
-    num_turns = st.slider("Number of turns in spiral", 1, 100, 9)
+df, numeric_cols, text_cols, unique_stocks = load_data()
 
-    Point = namedtuple('Point', 'x y')
-    data = []
+#Title of Dashboard
+st.title("Stock Dashboard")
 
-    points_per_turn = total_points / num_turns
+#Add checkbox to sidebar
+check_box = st.sidebar.checkbox(label = "Display dataset")
 
-    for curr_point_num in range(total_points):
-        curr_turn, i = divmod(curr_point_num, points_per_turn)
-        angle = (curr_turn + 1) * 2 * math.pi * i / points_per_turn
-        radius = curr_point_num / total_points
-        x = radius * math.cos(angle)
-        y = radius * math.sin(angle)
-        data.append(Point(x, y))
+if check_box:
+	#Show the dataset
+	st.write(df)
 
-    st.altair_chart(alt.Chart(pd.DataFrame(data), height=500, width=500)
-        .mark_circle(color='#0068c9', opacity=0.5)
-        .encode(x='x:Q', y='y:Q'))
+st.sidebar.title("Settings")
+feature_selection = st.sidebar.multiselect(label = "Features to plot", options=numeric_cols)
+
+stock_dropdown = st.sidebar.selectbox(label = "Stock Ticker", options = unique_stocks)
+
+print(feature_selection)
+df = df[df['Name'] == stock_dropdown]
+df_features = df[feature_selection]
+
+plotly_figure = px.line(data_frame = df_features, x=df_features.index, y = feature_selection,
+		       title = (str(stock_dropdown) + ' ' + 'timeline'))
+st.plotly_chart(plotly_figure)
